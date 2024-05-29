@@ -183,7 +183,7 @@ module.exports = class AudioToTextPlugin extends Plugin {
                 if (returnText) {
                     return text;
                 } else {
-                    await this.createTranscriptionNote(text, audioFile.name);
+                    await this.createTranscriptionNoteWithUniqueName(text, audioFile.name);
                     new Notice(`Transcription complete for file: ${link}`);
                 }
             } else {
