@@ -13,7 +13,7 @@ Audio to Text is a plugin for Obsidian that transcribes audio files into text us
 
 ## Installation
 
-1. Download the latest release from the [GitHub releases page](#).
+1. Download the latest release from the [GitHub releases page](https://github.com/aaldrich29/Audio-To-Text/releases).
 2. Extract the contents to your Obsidian vault's plugins directory:
 <your-vault>/.obsidian/plugins/audio-to-text
 
