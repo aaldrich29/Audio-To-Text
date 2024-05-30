@@ -21,8 +21,6 @@ https://github.com/aaldrich29/Audio-To-Text/assets/3700687/1b47c1cb-8678-40a1-92
 2. Extract the contents to your Obsidian vault's plugins directory:
 <your-vault>/.obsidian/plugins/audio-to-text
 
-markdown
-Copy code
 3. Enable the plugin in Obsidian:
 - Go to `Settings` > `Community plugins` > `Manage plugins`.
 - Find `Audio to Text` and enable it.
