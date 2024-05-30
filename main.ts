@@ -345,7 +345,7 @@ export default class AudioToTextPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({ apiKey: '', transcribeToNewNote: true }, await this.loadData());
+        this.settings = Object.assign({ apiKey: '', transcribeToNewNote: false }, await this.loadData());
     }
 
     async saveSettings() {
