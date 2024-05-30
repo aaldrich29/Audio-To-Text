@@ -1,134 +1,358 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, TFile } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface AudioToTextSettings {
+    apiKey: string;
+    transcribeToNewNote: boolean;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+interface AudioFileSelectionModalProps {
+    app: App;
+    audioFiles: string[];
+    onSelect: (selectedFiles: string[]) => void;
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+class AudioFileSelectionModal extends Modal {
+    private audioFiles: string[];
+    private onSelect: (selectedFiles: string[]) => void;
 
-	async onload() {
-		await this.loadSettings();
+    constructor({ app, audioFiles, onSelect }: AudioFileSelectionModalProps) {
+        super(app);
+        this.audioFiles = audioFiles;
+        this.onSelect = onSelect;
+    }
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl('h2', { text: 'Select audio files to transcribe' });
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+        const allCheckboxContainer = contentEl.createDiv('all-checkbox-container');
+        const allCheckbox = allCheckboxContainer.createEl('input', { type: 'checkbox' });
+        allCheckbox.addEventListener('change', () => {
+            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
+            checkboxes.forEach(checkbox => checkbox.checked = allCheckbox.checked);
+        });
+        allCheckboxContainer.createEl('span', { text: 'All' });
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+        this.audioFiles.forEach(file => {
+            const fileContainer = contentEl.createDiv('file-container');
+            const checkbox = fileContainer.createEl('input', { type: 'checkbox', cls: 'audio-checkbox' });
+            fileContainer.createEl('span', { text: file });
+        });
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
+        const submitButton = contentEl.createEl('button', { text: 'Transcribe' });
+        submitButton.addEventListener('click', () => {
+            const selectedFiles: string[] = [];
+            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
+            checkboxes.forEach((checkbox, index) => {
+                if (checkbox.checked) {
+                    selectedFiles.push(this.audioFiles[index]);
+                }
+            });
+            this.onSelect(selectedFiles);
+            this.close();
+        });
+    }
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
-
-	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+    }
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+class AudioToTextSettingTab extends PluginSettingTab {
+    private plugin: AudioToTextPlugin;
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+    constructor(app: App, plugin: AudioToTextPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+    display(): void {
+        const { containerEl } = this;
+        containerEl.empty();
+        new Setting(containerEl)
+            .setName('OpenAI API key')
+            .setDesc('Enter your OpenAI API key here.')
+            .addText(text => text
+                .setPlaceholder('Enter your API key')
+                .setValue(this.plugin.settings.apiKey || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.apiKey = value;
+                    await this.plugin.saveSettings();
+                }));
+        new Setting(containerEl)
+            .setName('Context menu: Transcribe to new note')
+            .setDesc('Transcribe audio to a new note instead of the current note when you right-click an audio file link and choose transcribe.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.transcribeToNewNote)
+                .onChange(async (value) => {
+                    this.plugin.settings.transcribeToNewNote = value;
+                    await this.plugin.saveSettings();
+                }));
+    }
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export default class AudioToTextPlugin extends Plugin {
+    settings: AudioToTextSettings;
 
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
+    async onload() {
+        await this.loadSettings();
+        this.addSettingTab(new AudioToTextSettingTab(this.app, this));
 
-	display(): void {
-		const {containerEl} = this;
+        this.addCommand({
+            id: 'transcribe-audio-files',
+            name: 'Add transcription to new notes',
+            checkCallback: (checking: boolean) => {
+                if (checking) {
+                    return !!this.app.workspace.activeLeaf;
+                }
+                this.handleTranscribeAudioFiles();
+            }
+        });
 
-		containerEl.empty();
+        this.addCommand({
+            id: 'add-transcription-to-active-note',
+            name: 'Add transcription to active note',
+            checkCallback: (checking: boolean) => {
+                if (checking) {
+                    return !!this.app.workspace.activeLeaf;
+                }
+                this.handleAddTranscriptionToActiveNote();
+            }
+        });
 
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+        this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+            if (this.isSupportedAudioFile(file.extension)) {
+                menu.addItem(item => {
+                    item.setTitle('Transcribe audio file')
+                        .setIcon('microphone')
+                        .onClick(() => {
+                            if (this.settings.transcribeToNewNote) {
+                                this.transcribeAudioFile(file);
+                            } else {
+                                this.addTranscriptionToActiveNoteFromFile(file);
+                            }
+                        });
+                });
+            }
+        }));
+    }
+
+    async handleTranscribeAudioFiles() {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file found!');
+            return;
+        }
+        const fileContent = await this.app.vault.read(activeFile);
+        const audioFileLinks = this.extractAudioFileLinks(fileContent);
+        if (audioFileLinks.length === 0) {
+            new Notice('No audio links found in the note!');
+            return;
+        }
+        if (audioFileLinks.length === 1) {
+            this.transcribeSingleAudioFile(audioFileLinks[0]);
+        } else {
+            new AudioFileSelectionModal({ app: this.app, audioFiles: audioFileLinks, onSelect: selectedFiles => {
+                selectedFiles.forEach(link => {
+                    this.transcribeSingleAudioFile(link);
+                });
+            }}).open();
+        }
+    }
+
+    async handleAddTranscriptionToActiveNote() {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file found!');
+            return;
+        }
+        const fileContent = await this.app.vault.read(activeFile);
+        const audioFileLinks = this.extractAudioFileLinks(fileContent);
+        if (audioFileLinks.length === 0) {
+            new Notice('No audio links found in the note!');
+            return;
+        }
+        if (audioFileLinks.length === 1) {
+            this.addSingleTranscriptionToActiveNote(audioFileLinks[0]);
+        } else {
+            new AudioFileSelectionModal({
+                app: this.app,
+                audioFiles: audioFileLinks,
+                onSelect: async (selectedFiles) => {
+                    let updatedContent = fileContent;
+                    for (const link of selectedFiles) {
+                        const text = await this.transcribeSingleAudioFile(link, true);
+                        if (text) {
+                            updatedContent += `\n\n### Transcription for ${link}\n${text}`;
+                        }
+                    }
+                    await this.app.vault.modify(activeFile, updatedContent);
+                }
+            }).open();
+        }
+    }
+
+    async transcribeSingleAudioFile(link: string, returnText = false): Promise<string | void> {
+        try {
+            let audioFile = this.app.vault.getAbstractFileByPath(link);
+            if (!audioFile) {
+                audioFile = await this.searchFileByName(link);
+            }
+            if (!audioFile) {
+                new Notice(`Audio file not found: ${link}`);
+                return;
+            }
+            const audioBuffer = await this.app.vault.readBinary(audioFile);
+            const text = await this.transcribeAudio(audioBuffer, audioFile.name);
+            if (text) {
+                if (returnText) {
+                    return text;
+                } else {
+                    await this.createTranscriptionNoteWithUniqueName(text, audioFile.name);
+                    new Notice(`Transcription complete for file: ${link}`);
+                }
+            } else {
+                new Notice(`Transcription failed for file: ${link}`);
+            }
+        } catch (error) {
+            new Notice(`An error occurred during transcription for file: ${link}`);
+            console.error(`Error during transcription for file: ${link}`, error);
+        }
+    }
+
+    async addSingleTranscriptionToActiveNote(link: string) {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file found!');
+            return;
+        }
+        const fileContent = await this.app.vault.read(activeFile);
+        const text = await this.transcribeSingleAudioFile(link, true);
+        if (text) {
+            const updatedContent = fileContent + `\n\n### Transcription for ${link}\n${text}`;
+            await this.app.vault.modify(activeFile, updatedContent);
+            new Notice(`Transcription added to active note for file: ${link}`);
+        }
+    }
+
+    async addTranscriptionToActiveNoteFromFile(audioFile: TFile) {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file found!');
+            return;
+        }
+        const fileContent = await this.app.vault.read(activeFile);
+        const text = await this.transcribeSingleAudioFile(audioFile.path, true);
+        if (text) {
+            const updatedContent = fileContent + `\n\n### Transcription for ${audioFile.name}\n${text}`;
+            await this.app.vault.modify(activeFile, updatedContent);
+            new Notice(`Transcription added to active note for file: ${audioFile.name}`);
+        }
+    }
+
+    async transcribeAudioFile(audioFile: TFile) {
+        try {
+            const audioBuffer = await this.app.vault.readBinary(audioFile);
+            const text = await this.transcribeAudio(audioBuffer, audioFile.name);
+            if (text) {
+                await this.createTranscriptionNoteWithUniqueName(text, audioFile.name);
+                new Notice('Transcription complete!');
+            } else {
+                new Notice('Transcription failed!');
+            }
+        } catch (error) {
+            new Notice('An error occurred during transcription.');
+            console.error('Error during transcription:', error);
+        }
+    }
+
+    extractAudioFileLinks(content: string): string[] {
+        const regex = /!\[\[([^\]]+\.(mp3|webm|wav|ogg|m4a))\]\]/g;
+        const matches: string[] = [];
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(content)) !== null) {
+            matches.push(match[1]);
+        }
+        return matches;
+    }
+
+    async searchFileByName(fileName: string): Promise<TFile | undefined> {
+        const files = this.app.vault.getFiles();
+        return files.find(file => file.path.endsWith(fileName));
+    }
+
+    isSupportedAudioFile(extension: string): boolean {
+        const supportedExtensions = ['mp3', 'webm', 'wav', 'ogg', 'm4a'];
+        return supportedExtensions.includes(extension.toLowerCase());
+    }
+
+    async transcribeAudio(audioBuffer: ArrayBuffer, fileName: string): Promise<string> {
+        const apiKey = this.settings.apiKey;
+        if (!apiKey) {
+            new Notice('OpenAI API key not set!');
+            return '';
+        }
+        try {
+            const formData = new FormData();
+            formData.append('file', new Blob([audioBuffer]), fileName);
+            formData.append('model', 'whisper-1');
+            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: formData
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                new Notice('API request failed!');
+                return '';
+            }
+            const result = await response.json();
+            return result.text;
+        } catch (error) {
+            new Notice('Failed to communicate with API.');
+            console.error('Failed to communicate with API:', error);
+            return '';
+        }
+    }
+
+    async createTranscriptionNoteWithUniqueName(text: string, audioFileName: string) {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) return;
+        
+        let fileName = `${audioFileName} Transcription`;
+        let filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
+        while (await this.app.vault.adapter.exists(filePath)) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            fileName = `${audioFileName} Transcription ${timestamp}`;
+            filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
+        }
+        try {
+            const content = `### Transcription for ${audioFileName}\n${text}`;
+            await this.app.vault.create(filePath, content);
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (file) {
+                await this.app.workspace.getLeaf().openFile(file);
+            } else {
+                console.error('Failed to open transcription note:', filePath);
+            }
+        } catch (error) {
+            new Notice('Failed to create transcription note.');
+            console.error('Error creating transcription note:', error);
+        }
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign({ apiKey: '', transcribeToNewNote: true }, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
+    
+    onunload() {
+        console.log('Unloading Audio to Text plugin');
+    }
 }
