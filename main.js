@@ -54,7 +54,6 @@ class AudioToTextSettingTab extends PluginSettingTab {
     display() {
         const { containerEl } = this;
         containerEl.empty();
-        new Setting(containerEl).setName('Audio to text settings').setHeading();
         new Setting(containerEl)
             .setName('OpenAI API key')
             .setDesc('Enter your OpenAI API key here.')
