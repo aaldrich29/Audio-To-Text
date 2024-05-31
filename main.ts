@@ -248,7 +248,8 @@ export default class AudioToTextPlugin extends Plugin {
             await this.app.vault.create(filePath, content);
             const file = this.app.vault.getAbstractFileByPath(filePath);
             if (file && file instanceof TFile) {
-                await this.app.workspace.getLeaf().openFile(file);
+                const newLeaf = this.app.workspace.getLeaf(true);
+                await newLeaf.openFile(file);
             } else {
                 console.error('Failed to open transcription note:', filePath);
             }
