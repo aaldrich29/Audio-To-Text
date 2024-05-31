@@ -1,96 +1,7 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, TFile } from 'obsidian';
-
-interface AudioToTextSettings {
-    apiKey: string;
-    transcribeToNewNote: boolean;
-}
-
-interface AudioFileSelectionModalProps {
-    app: App;
-    audioFiles: string[];
-    onSelect: (selectedFiles: string[]) => void;
-}
-
-class AudioFileSelectionModal extends Modal {
-    private audioFiles: string[];
-    private onSelect: (selectedFiles: string[]) => void;
-
-    constructor({ app, audioFiles, onSelect }: AudioFileSelectionModalProps) {
-        super(app);
-        this.audioFiles = audioFiles;
-        this.onSelect = onSelect;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.createEl('h2', { text: 'Select audio files to transcribe' });
-
-        const allCheckboxContainer = contentEl.createDiv('all-checkbox-container');
-        const allCheckbox = allCheckboxContainer.createEl('input', { type: 'checkbox' });
-        allCheckbox.addEventListener('change', () => {
-            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
-            checkboxes.forEach(checkbox => checkbox.checked = allCheckbox.checked);
-        });
-        allCheckboxContainer.createEl('span', { text: 'All' });
-
-        this.audioFiles.forEach(file => {
-            const fileContainer = contentEl.createDiv('file-container');
-            const checkbox = fileContainer.createEl('input', { type: 'checkbox', cls: 'audio-checkbox' });
-            fileContainer.createEl('span', { text: file });
-        });
-
-        const submitButton = contentEl.createEl('button', { text: 'Transcribe' });
-        submitButton.addEventListener('click', () => {
-            const selectedFiles: string[] = [];
-            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
-            checkboxes.forEach((checkbox, index) => {
-                if (checkbox.checked) {
-                    selectedFiles.push(this.audioFiles[index]);
-                }
-            });
-            this.onSelect(selectedFiles);
-            this.close();
-        });
-    }
-
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-    }
-}
-
-class AudioToTextSettingTab extends PluginSettingTab {
-    private plugin: AudioToTextPlugin;
-
-    constructor(app: App, plugin: AudioToTextPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
-    }
-
-    display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
-        new Setting(containerEl)
-            .setName('OpenAI API key')
-            .setDesc('Enter your OpenAI API key here.')
-            .addText(text => text
-                .setPlaceholder('Enter your API key')
-                .setValue(this.plugin.settings.apiKey || '')
-                .onChange(async (value) => {
-                    this.plugin.settings.apiKey = value;
-                    await this.plugin.saveSettings();
-                }));
-        new Setting(containerEl)
-            .setName('Context menu: Transcribe to new note')
-            .setDesc('Transcribe audio to a new note instead of the current note when you right-click an audio file link and choose transcribe.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.transcribeToNewNote)
-                .onChange(async (value) => {
-                    this.plugin.settings.transcribeToNewNote = value;
-                    await this.plugin.saveSettings();
-                }));
-    }
-}
+import { AudioToTextSettings, AudioFileSelectionModalProps } from 'src/interfaces';
+import { AudioFileSelectionModal } from 'src/modal';
+import { AudioToTextSettingTab } from 'src/settings';
 
 export default class AudioToTextPlugin extends Plugin {
     settings: AudioToTextSettings;
@@ -122,7 +33,7 @@ export default class AudioToTextPlugin extends Plugin {
         });
 
         this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
-            if (this.isSupportedAudioFile(file.extension)) {
+            if (file instanceof TFile && this.isSupportedAudioFile(file.extension)) {
                 menu.addItem(item => {
                     item.setTitle('Transcribe audio file')
                         .setIcon('microphone')
@@ -196,8 +107,8 @@ export default class AudioToTextPlugin extends Plugin {
     async transcribeSingleAudioFile(link: string, returnText = false): Promise<string | void> {
         try {
             let audioFile = this.app.vault.getAbstractFileByPath(link);
-            if (!audioFile) {
-                audioFile = await this.searchFileByName(link);
+            if (audioFile && !(audioFile instanceof TFile)) {
+                audioFile = null;
             }
             if (!audioFile) {
                 new Notice(`Audio file not found: ${link}`);
@@ -320,7 +231,10 @@ export default class AudioToTextPlugin extends Plugin {
 
     async createTranscriptionNoteWithUniqueName(text: string, audioFileName: string) {
         const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) return;
+        if (!activeFile || !activeFile.parent) {
+            new Notice('No active file or active file has no parent.');
+            return;
+        }
         
         let fileName = `${audioFileName} Transcription`;
         let filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
@@ -333,7 +247,7 @@ export default class AudioToTextPlugin extends Plugin {
             const content = `### Transcription for ${audioFileName}\n${text}`;
             await this.app.vault.create(filePath, content);
             const file = this.app.vault.getAbstractFileByPath(filePath);
-            if (file) {
+            if (file && file instanceof TFile) {
                 await this.app.workspace.getLeaf().openFile(file);
             } else {
                 console.error('Failed to open transcription note:', filePath);
