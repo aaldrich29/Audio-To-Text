@@ -92,7 +92,12 @@ export default class AudioToTextPlugin extends Plugin {
         if (!text) return;
 
         if (transcribeToNewNote) {
-            await this.createTranscriptionNoteWithUniqueName(text, link);
+            const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, link, activeFile);
+            if (newFileLink && this.settings.addLinkToOriginalFile) {
+                const fileContent = await this.app.vault.read(activeFile);
+                const updatedContent = `${fileContent}\n\n### Link to transcription for ${link}\n[[${newFileLink.name}]]`;
+                await this.app.vault.modify(activeFile, updatedContent);
+            }
         } else {
             const fileContent = await this.app.vault.read(activeFile);
             const updatedContent = `${fileContent}\n\n### Transcription for ${link}\n${text}`;
@@ -168,11 +173,10 @@ export default class AudioToTextPlugin extends Plugin {
         }
     }
 
-    async createTranscriptionNoteWithUniqueName(text: string, audioFileName: string) {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile || !activeFile.parent) {
-            new Notice('No active file or active file has no parent.');
-            return;
+    async createTranscriptionNoteWithUniqueName(text: string, audioFileName: string, activeFile: TFile): Promise<TFile | null> {
+        if (!activeFile.parent) {
+            new Notice('Active file has no parent.');
+            return null;
         }
 
         let fileName = `${audioFileName} Transcription`;
@@ -189,17 +193,24 @@ export default class AudioToTextPlugin extends Plugin {
             if (file && file instanceof TFile) {
                 const newLeaf = this.app.workspace.getLeaf(true);
                 await newLeaf.openFile(file);
+                return file;
             } else {
                 console.error('Failed to open transcription note:', filePath);
+                return null;
             }
         } catch (error) {
             new Notice('Failed to create transcription note.');
             console.error('Error creating transcription note:', error);
+            return null;
         }
     }
 
     async loadSettings() {
-        this.settings = Object.assign({ apiKey: '', transcribeToNewNote: false }, await this.loadData());
+        this.settings = Object.assign({
+            apiKey: '',
+            transcribeToNewNote: false,
+            addLinkToOriginalFile: true
+        }, await this.loadData());
     }
 
     async saveSettings() {

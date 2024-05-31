@@ -31,5 +31,15 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     this.plugin.settings.transcribeToNewNote = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('Add Link to Original File')
+            .setDesc('Add a link to the new transcription file in the original file.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.addLinkToOriginalFile)
+                .onChange(async (value) => {
+                    this.plugin.settings.addLinkToOriginalFile = value;
+                    await this.plugin.saveSettings();
+                }));
     }
 }

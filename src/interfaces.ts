@@ -3,6 +3,7 @@ import { App } from 'obsidian';
 export interface AudioToTextSettings {
     apiKey: string;
     transcribeToNewNote: boolean;
+    addLinkToOriginalFile: boolean;
 }
 
 export interface AudioFileSelectionModalProps {
