@@ -1,4 +1,4 @@
-import AudioToTextPlugin from './AudioToTextPlugin';
+import AudioToTextPlugin from 'main';
 import { App, PluginSettingTab, Setting } from 'obsidian';
 
 export class AudioToTextSettingTab extends PluginSettingTab {
@@ -23,7 +23,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         new Setting(containerEl)
-            .setName('Context menu: Transcribe to new note')
+            .setName('Context menu: transcribe to new note')
             .setDesc('Transcribe audio to a new note instead of the current note when you right-click an audio file link and choose transcribe.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.transcribeToNewNote)

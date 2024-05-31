@@ -12,7 +12,7 @@ export default class AudioToTextPlugin extends Plugin {
 
         this.addCommand({
             id: 'transcribe-audio-files',
-            name: 'Add transcription to new notes',
+            name: 'Add transcription to new note',
             checkCallback: (checking: boolean) => {
                 if (checking) {
                     return !!this.app.workspace.activeLeaf;
