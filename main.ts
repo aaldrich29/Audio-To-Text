@@ -17,7 +17,7 @@ export default class AudioToTextPlugin extends Plugin {
                 if (checking) {
                     return !!this.app.workspace.activeLeaf;
                 }
-                this.handleTranscribeAudioFiles();
+                this.handleTranscribeAudioFiles(true);
             }
         });
 
@@ -28,7 +28,7 @@ export default class AudioToTextPlugin extends Plugin {
                 if (checking) {
                     return !!this.app.workspace.activeLeaf;
                 }
-                this.handleAddTranscriptionToActiveNote();
+                this.handleTranscribeAudioFiles(false);
             }
         });
 
@@ -38,18 +38,14 @@ export default class AudioToTextPlugin extends Plugin {
                     item.setTitle('Transcribe audio file')
                         .setIcon('microphone')
                         .onClick(() => {
-                            if (this.settings.transcribeToNewNote) {
-                                this.transcribeAudioFile(file);
-                            } else {
-                                this.addTranscriptionToActiveNoteFromFile(file);
-                            }
+                            this.handleFileMenuTranscription(file);
                         });
                 });
             }
         }));
     }
 
-    async handleTranscribeAudioFiles() {
+    async handleTranscribeAudioFiles(transcribeToNewNote: boolean) {
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) {
             new Notice('No active file found!');
@@ -61,120 +57,63 @@ export default class AudioToTextPlugin extends Plugin {
             new Notice('No audio links found in the note!');
             return;
         }
-        if (audioFileLinks.length === 1) {
-            this.transcribeSingleAudioFile(audioFileLinks[0]);
-        } else {
-            new AudioFileSelectionModal({ app: this.app, audioFiles: audioFileLinks, onSelect: selectedFiles => {
-                selectedFiles.forEach(link => {
-                    this.transcribeSingleAudioFile(link);
-                });
-            }}).open();
-        }
-    }
 
-    async handleAddTranscriptionToActiveNote() {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) {
-            new Notice('No active file found!');
-            return;
-        }
-        const fileContent = await this.app.vault.read(activeFile);
-        const audioFileLinks = this.extractAudioFileLinks(fileContent);
-        if (audioFileLinks.length === 0) {
-            new Notice('No audio links found in the note!');
-            return;
-        }
         if (audioFileLinks.length === 1) {
-            this.addSingleTranscriptionToActiveNote(audioFileLinks[0]);
+            await this.processSingleAudioFile(audioFileLinks[0], transcribeToNewNote);
         } else {
             new AudioFileSelectionModal({
                 app: this.app,
                 audioFiles: audioFileLinks,
-                onSelect: async (selectedFiles) => {
-                    let updatedContent = fileContent;
-                    for (const link of selectedFiles) {
-                        const text = await this.transcribeSingleAudioFile(link, true);
-                        if (text) {
-                            updatedContent += `\n\n### Transcription for ${link}\n${text}`;
-                        }
-                    }
-                    await this.app.vault.modify(activeFile, updatedContent);
+                onSelect: selectedFiles => {
+                    selectedFiles.forEach(link => {
+                        this.processSingleAudioFile(link, transcribeToNewNote);
+                    });
                 }
             }).open();
         }
     }
 
-    async transcribeSingleAudioFile(link: string, returnText = false): Promise<string | void> {
-        try {
-            let audioFile = this.app.vault.getAbstractFileByPath(link);
-            if (audioFile && !(audioFile instanceof TFile)) {
-                audioFile = null;
-            }
-            if (!audioFile) {
-                new Notice(`Audio file not found: ${link}`);
-                return;
-            }
-            const audioBuffer = await this.app.vault.readBinary(audioFile);
-            const text = await this.transcribeAudio(audioBuffer, audioFile.name);
-            if (text) {
-                if (returnText) {
-                    return text;
-                } else {
-                    await this.createTranscriptionNoteWithUniqueName(text, audioFile.name);
-                    new Notice(`Transcription complete for file: ${link}`);
-                }
-            } else {
-                new Notice(`Transcription failed for file: ${link}`);
-            }
-        } catch (error) {
-            new Notice(`An error occurred during transcription for file: ${link}`);
-            console.error(`Error during transcription for file: ${link}`, error);
+    async handleFileMenuTranscription(audioFile: TFile) {
+        if (this.settings.transcribeToNewNote) {
+            await this.processSingleAudioFile(audioFile.path, true);
+        } else {
+            await this.processSingleAudioFile(audioFile.path, false);
         }
     }
 
-    async addSingleTranscriptionToActiveNote(link: string) {
+    async processSingleAudioFile(link: string, transcribeToNewNote: boolean) {
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) {
             new Notice('No active file found!');
             return;
         }
-        const fileContent = await this.app.vault.read(activeFile);
-        const text = await this.transcribeSingleAudioFile(link, true);
-        if (text) {
-            const updatedContent = fileContent + `\n\n### Transcription for ${link}\n${text}`;
+
+        const text = await this.transcribeSingleAudioFile(link);
+        if (!text) return;
+
+        if (transcribeToNewNote) {
+            await this.createTranscriptionNoteWithUniqueName(text, link);
+        } else {
+            const fileContent = await this.app.vault.read(activeFile);
+            const updatedContent = `${fileContent}\n\n### Transcription for ${link}\n${text}`;
             await this.app.vault.modify(activeFile, updatedContent);
             new Notice(`Transcription added to active note for file: ${link}`);
         }
     }
 
-    async addTranscriptionToActiveNoteFromFile(audioFile: TFile) {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) {
-            new Notice('No active file found!');
-            return;
-        }
-        const fileContent = await this.app.vault.read(activeFile);
-        const text = await this.transcribeSingleAudioFile(audioFile.path, true);
-        if (text) {
-            const updatedContent = fileContent + `\n\n### Transcription for ${audioFile.name}\n${text}`;
-            await this.app.vault.modify(activeFile, updatedContent);
-            new Notice(`Transcription added to active note for file: ${audioFile.name}`);
-        }
-    }
-
-    async transcribeAudioFile(audioFile: TFile) {
+    async transcribeSingleAudioFile(link: string): Promise<string | null> {
         try {
-            const audioBuffer = await this.app.vault.readBinary(audioFile);
-            const text = await this.transcribeAudio(audioBuffer, audioFile.name);
-            if (text) {
-                await this.createTranscriptionNoteWithUniqueName(text, audioFile.name);
-                new Notice('Transcription complete!');
-            } else {
-                new Notice('Transcription failed!');
+            const audioFile = this.app.vault.getAbstractFileByPath(link);
+            if (!audioFile || !(audioFile instanceof TFile)) {
+                new Notice(`Audio file not found: ${link}`);
+                return null;
             }
+            const audioBuffer = await this.app.vault.readBinary(audioFile);
+            return await this.transcribeAudio(audioBuffer, audioFile.name);
         } catch (error) {
-            new Notice('An error occurred during transcription.');
-            console.error('Error during transcription:', error);
+            new Notice(`An error occurred during transcription for file: ${link}`);
+            console.error(`Error during transcription for file: ${link}`, error);
+            return null;
         }
     }
 
@@ -235,7 +174,7 @@ export default class AudioToTextPlugin extends Plugin {
             new Notice('No active file or active file has no parent.');
             return;
         }
-        
+
         let fileName = `${audioFileName} Transcription`;
         let filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
         while (await this.app.vault.adapter.exists(filePath)) {
