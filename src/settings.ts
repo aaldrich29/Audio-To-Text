@@ -41,5 +41,14 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     this.plugin.settings.addLinkToOriginalFile = value;
                     await this.plugin.saveSettings();
                 }));
+        new Setting(containerEl)
+            .setName('Embed Audio Link')
+            .setDesc('Embed a link to the audio file at the top of the transcription note.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.embedAudioLink) // Added this line
+                .onChange(async (value) => {
+                    this.plugin.settings.embedAudioLink = value;
+                    await this.plugin.saveSettings();
+                }));
     }
 }

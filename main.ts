@@ -203,7 +203,7 @@ export default class AudioToTextPlugin extends Plugin {
             new Notice('Active file has no parent.');
             return null;
         }
-
+    
         let fileName = `${audioFileName} Transcription`;
         let filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
         while (await this.app.vault.adapter.exists(filePath)) {
@@ -211,8 +211,15 @@ export default class AudioToTextPlugin extends Plugin {
             fileName = `${audioFileName} Transcription ${timestamp}`;
             filePath = normalizePath(`${activeFile.parent.path}/${fileName}.md`);
         }
+    
         try {
-            const content = `### Transcription for ${audioFileName}\n${text}`;
+            let content = `### Transcription for ${audioFileName}\n${text}`;
+    
+            // Check if the embedAudioLink setting is enabled
+            if (this.settings.embedAudioLink) {
+                content = `![[${audioFileName}]]\n\n` + content;
+            }
+    
             await this.app.vault.create(filePath, content);
             const file = this.app.vault.getAbstractFileByPath(filePath);
             if (file && file instanceof TFile) {
@@ -229,6 +236,8 @@ export default class AudioToTextPlugin extends Plugin {
             return null;
         }
     }
+    
+    
 
     async loadSettings() {
         this.settings = Object.assign({

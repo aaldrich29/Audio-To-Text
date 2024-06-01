@@ -4,6 +4,7 @@ export interface AudioToTextSettings {
     apiKey: string;
     transcribeToNewNote: boolean;
     addLinkToOriginalFile: boolean;
+    embedAudioLink: boolean;
 }
 
 export interface AudioFileSelectionModalProps {
