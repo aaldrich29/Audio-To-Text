@@ -57,21 +57,34 @@ export default class AudioToTextPlugin extends Plugin {
             new Notice('No audio links found in the note!');
             return;
         }
-
+    
         if (audioFileLinks.length === 1) {
             await this.processSingleAudioFile(audioFileLinks[0], transcribeToNewNote);
         } else {
             new AudioFileSelectionModal({
                 app: this.app,
                 audioFiles: audioFileLinks,
-                onSelect: selectedFiles => {
-                    selectedFiles.forEach(link => {
-                        this.processSingleAudioFile(link, transcribeToNewNote);
-                    });
+                onSelect: async (selectedFiles) => {
+                    let updatedContent = fileContent;
+                    for (const link of selectedFiles) {
+                        const text = await this.transcribeSingleAudioFile(link);
+                        if (text) {
+                            if (transcribeToNewNote) {
+                                const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, link, activeFile);
+                                if (newFileLink && this.settings.addLinkToOriginalFile) {
+                                    updatedContent = this.insertTextBelowLink(updatedContent, link, `### Link to transcription for ${link}\n[[${newFileLink.name}]]`);
+                                }
+                            } else {
+                                updatedContent = this.insertTextBelowLink(updatedContent, link, `### Transcription for ${link}\n${text}`);
+                            }
+                        }
+                    }
+                    await this.app.vault.modify(activeFile, updatedContent);
                 }
             }).open();
         }
     }
+    
 
     async handleFileMenuTranscription(audioFile: TFile) {
         if (this.settings.transcribeToNewNote) {
@@ -87,24 +100,36 @@ export default class AudioToTextPlugin extends Plugin {
             new Notice('No active file found!');
             return;
         }
-
+    
+        let fileContent = await this.app.vault.read(activeFile);
+    
         const text = await this.transcribeSingleAudioFile(link);
         if (!text) return;
-
+    
         if (transcribeToNewNote) {
             const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, link, activeFile);
             if (newFileLink && this.settings.addLinkToOriginalFile) {
-                const fileContent = await this.app.vault.read(activeFile);
-                const updatedContent = `${fileContent}\n\n### Link to transcription for ${link}\n[[${newFileLink.name}]]`;
-                await this.app.vault.modify(activeFile, updatedContent);
+                fileContent = this.insertTextBelowLink(fileContent, link, `### Link to transcription for ${link}\n[[${newFileLink.name}]]`);
+                await this.app.vault.modify(activeFile, fileContent);
             }
         } else {
-            const fileContent = await this.app.vault.read(activeFile);
-            const updatedContent = `${fileContent}\n\n### Transcription for ${link}\n${text}`;
-            await this.app.vault.modify(activeFile, updatedContent);
+            fileContent = this.insertTextBelowLink(fileContent, link, `### Transcription for ${link}\n${text}`);
+            await this.app.vault.modify(activeFile, fileContent);
             new Notice(`Transcription added to active note for file: ${link}`);
         }
     }
+    
+    insertTextBelowLink(content: string, link: string, textToInsert: string): string {
+        const regex = new RegExp(`(!\\[\\[${link}\\]\\])`, 'g');
+        const match = regex.exec(content);
+        if (match) {
+            const insertPosition = match.index + match[0].length;
+            return content.slice(0, insertPosition) + `\n${textToInsert}\n` + content.slice(insertPosition);
+        }
+        return content + `\n${textToInsert}\n`;
+    }
+    
+    
 
     async transcribeSingleAudioFile(link: string): Promise<string | null> {
         try {
