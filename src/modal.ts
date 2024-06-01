@@ -1,46 +1,64 @@
-import { Modal, App } from 'obsidian';
-import { AudioFileSelectionModalProps } from './interfaces';
+import { Modal, App, ButtonComponent } from 'obsidian';
+
+interface AudioFileSelectionModalProps {
+    app: App;
+    audioFiles: string[];
+    onSelect: (selectedFiles: string[]) => void;
+}
 
 export class AudioFileSelectionModal extends Modal {
-    private audioFiles: string[];
-    private onSelect: (selectedFiles: string[]) => void;
+    audioFiles: string[];
+    onSelect: (selectedFiles: string[]) => void;
 
-    constructor({ app, audioFiles, onSelect }: AudioFileSelectionModalProps) {
-        super(app);
-        this.audioFiles = audioFiles;
-        this.onSelect = onSelect;
+    constructor(props: AudioFileSelectionModalProps) {
+        super(props.app);
+        this.audioFiles = props.audioFiles;
+        this.onSelect = props.onSelect;
     }
 
     onOpen() {
         const { contentEl } = this;
+
         contentEl.createEl('h2', { text: 'Select audio files to transcribe' });
 
-        const allCheckboxContainer = contentEl.createDiv('all-checkbox-container');
-        const allCheckbox = allCheckboxContainer.createEl('input', { type: 'checkbox' });
-        allCheckbox.addEventListener('change', () => {
-            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
-            checkboxes.forEach(checkbox => checkbox.checked = allCheckbox.checked);
-        });
-        allCheckboxContainer.createEl('span', { text: 'All' });
+        const fileContainer = contentEl.createEl('div', { cls: 'file-container' });
 
-        this.audioFiles.forEach(file => {
-            const fileContainer = contentEl.createDiv('file-container');
-            const checkbox = fileContainer.createEl('input', { type: 'checkbox', cls: 'audio-checkbox' });
-            fileContainer.createEl('span', { text: file });
-        });
+        const selectAllCheckbox = fileContainer.createEl('input', { type: 'checkbox' });
+        selectAllCheckbox.id = 'select-all';
+        const selectAllLabel = fileContainer.createEl('label', { text: 'All', attr: { for: 'select-all' } });
+        fileContainer.createEl('br');
 
-        const submitButton = contentEl.createEl('button', { text: 'Transcribe' });
-        submitButton.addEventListener('click', () => {
-            const selectedFiles: string[] = [];
-            const checkboxes = contentEl.querySelectorAll('.audio-checkbox') as NodeListOf<HTMLInputElement>;
-            checkboxes.forEach((checkbox, index) => {
-                if (checkbox.checked) {
-                    selectedFiles.push(this.audioFiles[index]);
+        selectAllCheckbox.onchange = () => {
+            const checkboxes = fileContainer.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                if (checkbox !== selectAllCheckbox) {
+                    (checkbox as HTMLInputElement).checked = selectAllCheckbox.checked;
                 }
             });
+        };
+
+        this.audioFiles.forEach(file => {
+            const checkbox = fileContainer.createEl('input', { type: 'checkbox' });
+            checkbox.id = file;
+            const label = fileContainer.createEl('label', { text: file, attr: { for: file } });
+            fileContainer.createEl('br');
+        });
+
+        const buttonContainer = contentEl.createEl('div', { cls: 'button-container' });
+        const transcribeButton = new ButtonComponent(buttonContainer);
+        transcribeButton.setButtonText('Transcribe');
+        transcribeButton.buttonEl.addClass('mod-cta'); // Use theme's accent color
+        transcribeButton.onClick(() => {
+            const selectedFiles = Array.from(fileContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(checkbox => (checkbox as HTMLInputElement).id)
+                .filter(id => id !== 'select-all');
             this.onSelect(selectedFiles);
             this.close();
         });
+
+        // Additional styling
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.justifyContent = 'flex-end';
     }
 
     onClose() {
