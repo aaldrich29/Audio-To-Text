@@ -138,6 +138,7 @@ export default class AudioToTextPlugin extends Plugin {
                 new Notice(`Audio file not found: ${link}`);
                 return null;
             }
+            const notice = new Notice(`Transcribing ${audioFile.basename}...`, 0);
             const audioBuffer = await this.app.vault.readBinary(audioFile);
             notice.hide();
             return await this.transcribeAudio(audioBuffer, audioFile.name);
