@@ -1,5 +1,10 @@
 /* Custom modal styles */
-.modal-content .file-container {
+.audio-to-text.modal-content .file-container {
     margin-bottom: 1em;
     padding-left: 1em; 
+}
+
+.audio-to-text.modal-content {
+    padding-left: 1em;
+    padding-right: 1em;
 }

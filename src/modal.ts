@@ -18,7 +18,7 @@ export class AudioFileSelectionModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-        //contentEl.addClass('audio-to-text'); //This doesn't work for some reason.
+        contentEl.addClass('audio-to-text'); //This doesn't work for some reason. //Note: It didn't work because npm run dev stopped. Oops.
 
         contentEl.createEl('h2', { text: 'Select audio files to transcribe' });
 
