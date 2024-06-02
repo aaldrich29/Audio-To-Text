@@ -139,6 +139,7 @@ export default class AudioToTextPlugin extends Plugin {
                 return null;
             }
             const audioBuffer = await this.app.vault.readBinary(audioFile);
+            notice.hide();
             return await this.transcribeAudio(audioBuffer, audioFile.name);
         } catch (error) {
             new Notice(`An error occurred during transcription for file: ${link}`);
