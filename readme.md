@@ -12,8 +12,8 @@ Audio to Text is a plugin for Obsidian that transcribes audio files into text us
 - Transcribe multiple audio files in the same note.
 - Link to new transcription files from the original note.
 
+https://github.com/aaldrich29/Audio-To-Text/assets/3700687/f28f1923-7c1e-4e53-8307-fd8d0cb69b4f
 
-https://github.com/aaldrich29/Audio-To-Text/assets/3700687/1b47c1cb-8678-40a1-92c2-4c36a290d8f1
 
 
 ## Installation
