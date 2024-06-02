@@ -75,7 +75,7 @@ export default class AudioToTextPlugin extends Plugin {
                                     updatedContent = this.insertTextBelowLink(updatedContent, link, `### Link to transcription for ${link}\n[[${newFileLink.name}]]`);
                                 }
                             } else {
-                                updatedContent = this.insertTextBelowLink(updatedContent, link, `### Transcription for ${link}\n${text}`);
+                                updatedContent = this.insertTextBelowLink(updatedContent, link, `### Transcription for ${link}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
                             }
                         }
                     }
@@ -113,7 +113,7 @@ export default class AudioToTextPlugin extends Plugin {
                 await this.app.vault.modify(activeFile, fileContent);
             }
         } else {
-            fileContent = this.insertTextBelowLink(fileContent, link, `### Transcription for ${link}\n${text}`);
+            fileContent = this.insertTextBelowLink(fileContent, link, `### Transcription for ${link}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
             await this.app.vault.modify(activeFile, fileContent);
             new Notice(`Transcription added to active note for file: ${link}`);
         }
@@ -215,7 +215,7 @@ export default class AudioToTextPlugin extends Plugin {
         }
     
         try {
-            let content = `### Transcription for ${audioFileName}\n${text}`;
+            let content = `### Transcription for ${audioFileName}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`;
     
             // Check if the embedAudioLink setting is enabled
             if (this.settings.embedAudioLink) {
@@ -245,7 +245,8 @@ export default class AudioToTextPlugin extends Plugin {
         this.settings = Object.assign({
             apiKey: '',
             transcribeToNewNote: false,
-            addLinkToOriginalFile: true
+            addLinkToOriginalFile: true,
+            tag: '#transcription'
         }, await this.loadData());
     }
 

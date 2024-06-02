@@ -50,5 +50,16 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     this.plugin.settings.embedAudioLink = value;
                     await this.plugin.saveSettings();
                 }));
+        new Setting(containerEl)
+            .setName('Add Tag to Transcription')
+            .setDesc('Add a tag near the title of the transcription.')
+            .addText(text => text
+                .setPlaceholder('#transcription')
+                .setValue(this.plugin.settings.tag || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.tag = value;
+                    await this.plugin.saveSettings();
+                }));
+                
     }
 }
