@@ -169,6 +169,7 @@ export default class AudioToTextPlugin extends Plugin {
         }
     }
 
+    //todo: add option to choose 3.5 or 4o
     async postProcessText(text: string): Promise<string> {
         const apiKey = this.settings.apiKey;
         const instructions = this.settings.postProcessInstructions;
