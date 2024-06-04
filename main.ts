@@ -350,7 +350,7 @@ export default class AudioToTextPlugin extends Plugin {
             addLinkToOriginalFile: true,
             tag: '#transcription',
             postProcess: false,
-            postProcessModel: "gpt-3.5-turbo"
+            postProcessModel: "gpt-4o"
         }, await this.loadData());
     }
 
