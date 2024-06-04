@@ -151,6 +151,7 @@ export default class AudioToTextPlugin extends Plugin {
     
 
     async transcribeSingleAudioFile(link: string): Promise<string | null> {
+        //todo: this is where we'll also handle post-processing.
         try {
             const audioFile = this.app.vault.getAbstractFileByPath(link);
             if (!audioFile || !(audioFile instanceof TFile)) {
@@ -168,6 +169,35 @@ export default class AudioToTextPlugin extends Plugin {
         }
     }
 
+    async postProcessText(text: string): Promise<string> {
+        const apiKey = this.settings.apiKey;
+        const instructions = this.settings.postProcessInstructions;
+    
+        const payload = {
+            model: "gpt-4",
+            messages: [
+                { role: "system", content: instructions },
+                { role: "user", content: text }
+            ]
+        };
+    
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+    
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+        }
+    
+        const data = await response.json();
+        return data.choices[0].message.content;
+    }
+    
     extractAudioFileLinks(content: string): string[] {
         const regex = /!\[\[([^\]]+\.(mp3|webm|wav|ogg|m4a))\]\]/g;
         const matches: string[] = [];

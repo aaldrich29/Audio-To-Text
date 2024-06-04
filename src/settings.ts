@@ -59,7 +59,26 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.tag = value;
                     await this.plugin.saveSettings();
-                }));
+                }))
+        new Setting(containerEl)
+        .setName('Post-Process with GPT')
+        .setDesc('Run the transcibed text through GPT-4o to clean it up.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.postProcess) // Added this line
+            .onChange(async (value) => {
+                this.plugin.settings.postProcess = value;
+                await this.plugin.saveSettings();
+            }));
+        new Setting(containerEl)
+        .setName('Custom Post-Processing Instructions')
+        .setDesc('Add additional instructions like custom spellings for post-processing.')
+        .addText(text => text
+            .setPlaceholder('Please make sure my name is spelled correctly, it starts with M as in Mancy.')
+            .setValue(this.plugin.settings.postProcessInstructions || '')
+            .onChange(async (value) => {
+                this.plugin.settings.postProcessInstructions = value;
+                await this.plugin.saveSettings();
+            }));
                 
     }
 }

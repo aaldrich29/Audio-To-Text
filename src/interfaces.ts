@@ -6,6 +6,8 @@ export interface AudioToTextSettings {
     addLinkToOriginalFile: boolean;
     embedAudioLink: boolean;
     tag: string;
+    postProcess: boolean;
+    postProcessInstructions: string;
 }
 
 export interface AudioFileSelectionModalProps {
