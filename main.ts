@@ -79,7 +79,7 @@ export default class AudioToTextPlugin extends Plugin {
                             let text = await this.transcribeSingleAudioFile(filePath);
                             if (text) {
                                 if (transcribeToNewNote) {
-                                    const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, filePath, file);
+                                    const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, fileName, file);
                                     if (newFileLink && this.settings.addLinkToOriginalFile) {
                                         updatedContent = this.insertTextBelowLink(updatedContent, link, `### Link to transcription for ${fileName}\n[[${newFileLink.name}]]`);
                                     }
@@ -122,7 +122,7 @@ export default class AudioToTextPlugin extends Plugin {
           console.log(link)
           let updatedContent = content;
           if (transcribeToNewNote) {
-              const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, filePath, file);
+              const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, fileName, file);
               if (newFileLink && this.settings.addLinkToOriginalFile) {
                   updatedContent = this.insertTextBelowLink(updatedContent, fileName, `### Link to transcription for ${fileName}\n[[${newFileLink.name}]]`);
               }
@@ -157,9 +157,9 @@ export default class AudioToTextPlugin extends Plugin {
                 new Notice(`Audio file not found: ${link}`);
                 return null;
             }
-            const notice = new Notice(`Transcribing ${audioFile.basename}...`, 0);
+            
             const audioBuffer = await this.app.vault.readBinary(audioFile);
-            notice.hide();
+
             return await this.transcribeAudio(audioBuffer, audioFile.name);
         } catch (error) {
             new Notice(`An error occurred during transcription for file: ${link}`);
@@ -195,6 +195,7 @@ export default class AudioToTextPlugin extends Plugin {
             return '';
         }
         try {
+            const notice = new Notice(`Transcribing ${fileName}...`, 0);
             const formData = new FormData();
             formData.append('file', new Blob([audioBuffer]), fileName);
             formData.append('model', 'whisper-1');
@@ -205,6 +206,7 @@ export default class AudioToTextPlugin extends Plugin {
                 },
                 body: formData
             });
+            notice.hide();
             if (!response.ok) {
                 const errorText = await response.text();
                 new Notice('API request failed!');
