@@ -5,6 +5,7 @@ Audio to Text is a plugin for Obsidian that transcribes audio files into text us
 ## Features
 
 - Transcribe audio files directly within Obsidian.
+- Post-Process transcriptions with GPT 3.5 or 4o
 - Support for multiple audio file formats: `mp3`, `webm`, `wav`, `ogg`, `m4a`.
 - Transcribe audio to a new note or append to the current note.
 - Interactive selection dialog for multiple audio files.
@@ -64,7 +65,13 @@ https://github.com/aaldrich29/Audio-To-Text/assets/3700687/49b5f112-4431-4b41-be
 1. Go to `Settings` > `Audio to Text Settings`.
 2. Configure the following options:
 - **OpenAI API Key**: Enter your OpenAI API key.
-- **Transcribe to New Note**: Toggle whether to transcribe audio to a new note or append to the current note.
+- **Context menu: Transcribe to New Note**: Toggle whether to transcribe audio to a new note or append to the current note.
+- **Add Link to Original File**: If enabled, when transcribing to a new file, a link to the transcription will be created in the original file.
+- **Embed Audio Link**: When creating a new transcription note, this will add an embed link to the audio at the top of that note.
+- **Add Tag to Transcription**: Choose a custom tag to add to all transcriptions.
+- **Post-Process with GPT**: This is particularly helpful for conversations. By default they won't contain any paragraphs, but GPT can help clean it up.
+- **Post-Process Model**: GPT-4o does a much, much better job, but it's also 10x as expensive. I left the default at 3.5.
+- **Customer Post-Processing Instructions**: Create for correct spellings of names, translations of the text, or anything else you need.
 
 ## License
 
