@@ -1,3 +1,4 @@
+import { error } from 'console';
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, TFile } from 'obsidian';
 import { AudioToTextSettings, AudioFileSelectionModalProps } from 'src/interfaces';
 import { AudioFileSelectionModal } from 'src/modal';
@@ -46,40 +47,53 @@ export default class AudioToTextPlugin extends Plugin {
     }
 
     async handleTranscribeAudioFiles(transcribeToNewNote: boolean) {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) {
-            new Notice('No active file found!');
-            return;
-        }
-        const fileContent = await this.app.vault.read(activeFile);
-        const audioFileLinks = this.extractAudioFileLinks(fileContent);
+        const result = await this.getActiveFileContent();
+        if (!result) return;
+    
+        const { file, content } = result;
+        const audioFileLinks = this.extractAudioFileLinks(content);
         if (audioFileLinks.length === 0) {
             new Notice('No audio links found in the note!');
             return;
         }
     
         if (audioFileLinks.length === 1) {
-            await this.processSingleAudioFile(audioFileLinks[0], transcribeToNewNote);
+            const resolvedPath = this.resolveFullPath(audioFileLinks[0]); // Resolve full path
+            let fileName, filePath
+            if(resolvedPath){
+                let {fileName, filePath} = resolvedPath
+                await this.processSingleAudioFile(filePath, transcribeToNewNote);
+            }
         } else {
+            //Multiple audio files = Modal
             new AudioFileSelectionModal({
                 app: this.app,
                 audioFiles: audioFileLinks,
                 onSelect: async (selectedFiles) => {
-                    let updatedContent = fileContent;
+                    let updatedContent = content;
                     for (const link of selectedFiles) {
-                        const text = await this.transcribeSingleAudioFile(link);
-                        if (text) {
-                            if (transcribeToNewNote) {
-                                const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, link, activeFile);
-                                if (newFileLink && this.settings.addLinkToOriginalFile) {
-                                    updatedContent = this.insertTextBelowLink(updatedContent, link, `### Link to transcription for ${link}\n[[${newFileLink.name}]]`);
+                        const resolvedPath = this.resolveFullPath(link); // Resolve full path
+                        
+                        if (resolvedPath) {
+                            let { fileName, filePath } = resolvedPath;
+                            let text = await this.transcribeSingleAudioFile(filePath);
+                            if (text) {
+                                if (transcribeToNewNote) {
+                                    const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, filePath, file);
+                                    if (newFileLink && this.settings.addLinkToOriginalFile) {
+                                        updatedContent = this.insertTextBelowLink(updatedContent, link, `### Link to transcription for ${fileName}\n[[${newFileLink.name}]]`);
+                                    }
+                                } else {
+                                    updatedContent = this.insertTextBelowLink(updatedContent, link, `### Transcription for ${fileName}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
                                 }
-                            } else {
-                                updatedContent = this.insertTextBelowLink(updatedContent, link, `### Transcription for ${link}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
                             }
-                        }
+                          } else {
+                            // Handle the case where resolvedPath is null
+                            console.error('Failed to resolve path');
+                          }
+
                     }
-                    await this.app.vault.modify(activeFile, updatedContent);
+                    await this.modifyFileContent(file, updatedContent);
                 }
             }).open();
         }
@@ -95,28 +109,33 @@ export default class AudioToTextPlugin extends Plugin {
     }
 
     async processSingleAudioFile(link: string, transcribeToNewNote: boolean) {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) {
-            new Notice('No active file found!');
-            return;
-        }
-    
-        let fileContent = await this.app.vault.read(activeFile);
-    
-        const text = await this.transcribeSingleAudioFile(link);
-        if (!text) return;
-    
-        if (transcribeToNewNote) {
-            const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, link, activeFile);
-            if (newFileLink && this.settings.addLinkToOriginalFile) {
-                fileContent = this.insertTextBelowLink(fileContent, link, `### Link to transcription for ${link}\n[[${newFileLink.name}]]`);
-                await this.app.vault.modify(activeFile, fileContent);
-            }
+        const result = await this.getActiveFileContent();
+        if (!result) return;
+        const { file, content } = result;
+        const resolvedPath = this.resolveFullPath(link);
+
+        if (resolvedPath) {
+          let { fileName, filePath } = resolvedPath;
+          // Use fileName and filePath here
+          const text = await this.transcribeSingleAudioFile(filePath);
+          if (!text) return;
+          console.log(link)
+          let updatedContent = content;
+          if (transcribeToNewNote) {
+              const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, filePath, file);
+              if (newFileLink && this.settings.addLinkToOriginalFile) {
+                  updatedContent = this.insertTextBelowLink(updatedContent, fileName, `### Link to transcription for ${fileName}\n[[${newFileLink.name}]]`);
+              }
+          } else {
+              updatedContent = this.insertTextBelowLink(updatedContent, fileName, `### Transcription for ${fileName}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
+              new Notice(`Transcription added to active note for file: ${fileName}`);
+          }
+          await this.modifyFileContent(file, updatedContent);
         } else {
-            fileContent = this.insertTextBelowLink(fileContent, link, `### Transcription for ${link}${this.settings.tag ? `\n${this.settings.tag}` : ''}\n${text}`);
-            await this.app.vault.modify(activeFile, fileContent);
-            new Notice(`Transcription added to active note for file: ${link}`);
+          // Handle the case where resolvedPath is null
+          console.error('Failed to resolve path');
         }
+
     }
     
     insertTextBelowLink(content: string, link: string, textToInsert: string): string {
@@ -239,7 +258,48 @@ export default class AudioToTextPlugin extends Plugin {
         }
     }
     
+    async getActiveFileContent(): Promise<{ file: TFile, content: string } | null> {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file found!');
+            return null;
+        }
+        const content = await this.app.vault.read(activeFile);
+        return { file: activeFile, content };
+    }
+    async modifyFileContent(file: TFile, content: string) {
+        await this.app.vault.modify(file, content);
+    }
     
+    resolveFullPath(link: string): { fileName: string; filePath: string } | null {
+        // Check if the link is already a full path
+        if(this.fileExists(link)){ 
+            //If valid path
+            const extractedName = link.split('/').pop() || link;
+            const extractedPath = link
+            return { fileName: extractedName, filePath: extractedPath };
+        } else {
+
+            //Not a valid path so we have to find it.
+            const files = this.app.vault.getFiles();
+            const matchedFile = files.find(file => file.name === link);
+            let extractedPath
+            if(!matchedFile){
+                console.error('Could not extract path');
+                extractedPath = '';
+            } else {
+                extractedPath = matchedFile.path;
+            }
+            return { fileName: link, filePath: extractedPath };
+
+          }
+
+    }
+
+    fileExists(filePath: string) {
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        return file !== null;
+    }
 
     async loadSettings() {
         this.settings = Object.assign({
