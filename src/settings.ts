@@ -70,6 +70,18 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             }));
         new Setting(containerEl)
+        .setName('Post-Process Model')
+        .setDesc('Send your transcribed audio through GPT to add paragraphs and other cleanup.')
+        .addDropdown(dropdown => {
+            dropdown.addOption('gpt-3.5-turbo',"GPT 3.5 Turbo (Cheap)");
+            dropdown.addOption('gpt-4o',"GPT 4o (Best)");
+            dropdown.setValue(this.plugin.settings.postProcessModel);
+            dropdown.onChange(async (value) => {
+                this.plugin.settings.postProcessModel = value;
+                await this.plugin.saveSettings();
+              });
+            });
+        new Setting(containerEl)
         .setName('Custom Post-Processing Instructions')
         .setDesc('Add additional instructions like custom spellings for post-processing.')
         .addText(text => text

@@ -7,6 +7,7 @@ export interface AudioToTextSettings {
     embedAudioLink: boolean;
     tag: string;
     postProcess: boolean;
+    postProcessModel: string;
     postProcessInstructions: string;
 }
 

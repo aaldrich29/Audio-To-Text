@@ -119,7 +119,7 @@ export default class AudioToTextPlugin extends Plugin {
           // Use fileName and filePath here
           const text = await this.transcribeSingleAudioFile(filePath);
           if (!text) return;
-          console.log(link)
+          //console.log(link)
           let updatedContent = content;
           if (transcribeToNewNote) {
               const newFileLink = await this.createTranscriptionNoteWithUniqueName(text, fileName, file);
@@ -160,8 +160,14 @@ export default class AudioToTextPlugin extends Plugin {
             }
             
             const audioBuffer = await this.app.vault.readBinary(audioFile);
+            const text = await this.transcribeAudio(audioBuffer, audioFile.name);
 
-            return await this.transcribeAudio(audioBuffer, audioFile.name);
+            if(this.settings.postProcess){
+                return await this.postProcessText(text);
+            } else {
+                return text;
+            }
+            
         } catch (error) {
             new Notice(`An error occurred during transcription for file: ${link}`);
             console.error(`Error during transcription for file: ${link}`, error);
@@ -171,11 +177,13 @@ export default class AudioToTextPlugin extends Plugin {
 
     //todo: add option to choose 3.5 or 4o
     async postProcessText(text: string): Promise<string> {
+        const notice = new Notice("Post-Processing...",0)
         const apiKey = this.settings.apiKey;
-        const instructions = this.settings.postProcessInstructions;
+        const instructions = "You assist in cleaning up transcribed audio files. Please make this readable, adding paragraphs and editing punctuation as needed. " + this.settings.postProcessInstructions;
+
     
         const payload = {
-            model: "gpt-4",
+            model: this.settings.postProcessModel,
             messages: [
                 { role: "system", content: instructions },
                 { role: "user", content: text }
@@ -196,6 +204,7 @@ export default class AudioToTextPlugin extends Plugin {
         }
     
         const data = await response.json();
+        notice.hide()
         return data.choices[0].message.content;
     }
     
@@ -339,7 +348,9 @@ export default class AudioToTextPlugin extends Plugin {
             apiKey: '',
             transcribeToNewNote: false,
             addLinkToOriginalFile: true,
-            tag: '#transcription'
+            tag: '#transcription',
+            postProcess: false,
+            postProcessModel: "gpt-3.5-turbo"
         }, await this.loadData());
     }
 
@@ -348,6 +359,6 @@ export default class AudioToTextPlugin extends Plugin {
     }
     
     onunload() {
-        console.log('Unloading Audio to Text plugin');
+       // console.log('Unloading Audio to Text plugin');
     }
 }
