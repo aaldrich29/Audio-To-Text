@@ -217,11 +217,6 @@ export default class AudioToTextPlugin extends Plugin {
         return matches;
     }
 
-    async searchFileByName(fileName: string): Promise<TFile | undefined> {
-        const files = this.app.vault.getFiles();
-        return files.find(file => file.path.endsWith(fileName));
-    }
-
     isSupportedAudioFile(extension: string): boolean {
         const supportedExtensions = ['mp3', 'webm', 'wav', 'ogg', 'm4a'];
         return supportedExtensions.includes(extension.toLowerCase());
@@ -323,17 +318,13 @@ export default class AudioToTextPlugin extends Plugin {
         } else {
 
             //Not a valid path so we have to find it.
-            const files = this.app.vault.getFiles();
-            const matchedFile = files.find(file => file.name === link);
-            let extractedPath
-            if(!matchedFile){
+            const linkedFile = this.app.metadataCache.getFirstLinkpathDest(link, '');
+            if (linkedFile) {
+                return {fileName: link, filePath: linkedFile.path}
+            } else{
                 console.error('Could not extract path');
-                extractedPath = '';
-            } else {
-                extractedPath = matchedFile.path;
+                return {fileName: link, filePath: ''}
             }
-            return { fileName: link, filePath: extractedPath };
-
           }
 
     }
