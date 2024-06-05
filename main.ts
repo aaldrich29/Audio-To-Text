@@ -1,5 +1,4 @@
-import { error } from 'console';
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, TFile } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, normalizePath, TFile, MarkdownView, FileView } from 'obsidian';
 import { AudioToTextSettings, AudioFileSelectionModalProps } from 'src/interfaces';
 import { AudioFileSelectionModal } from 'src/modal';
 import { AudioToTextSettingTab } from 'src/settings';
@@ -16,18 +15,18 @@ export default class AudioToTextPlugin extends Plugin {
             name: 'Add transcription to new note',
             checkCallback: (checking: boolean) => {
                 if (checking) {
-                    return !!this.app.workspace.activeLeaf;
+                    return !!this.app.workspace.getActiveViewOfType(MarkdownView);
                 }
                 this.handleTranscribeAudioFiles(true);
             }
         });
-
+        //todo: make this work for audio files, using FileView
         this.addCommand({
             id: 'add-transcription-to-active-note',
             name: 'Add transcription to active note',
             checkCallback: (checking: boolean) => {
                 if (checking) {
-                    return !!this.app.workspace.activeLeaf;
+                    return !!this.app.workspace.getActiveViewOfType(MarkdownView);
                 }
                 this.handleTranscribeAudioFiles(false);
             }
