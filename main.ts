@@ -249,6 +249,7 @@ export default class AudioToTextPlugin extends Plugin {
             notice.hide();
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error(errorText);
                 new Notice('API request failed!');
                 return '';
             }
