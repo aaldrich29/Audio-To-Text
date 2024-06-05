@@ -33,7 +33,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Add Link to Original File')
+            .setName('Add link to original file')
             .setDesc('Add a link to the new transcription file in the original file.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.addLinkToOriginalFile)
@@ -42,7 +42,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         new Setting(containerEl)
-            .setName('Embed Audio Link')
+            .setName('Embed audio link')
             .setDesc('Embed a link to the audio file at the top of the transcription note.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.embedAudioLink) // Added this line
@@ -51,7 +51,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         new Setting(containerEl)
-            .setName('Add Tag to Transcription')
+            .setName('Add tag to transcription')
             .setDesc('Add a tag near the title of the transcription.')
             .addText(text => text
                 .setPlaceholder('#transcription')
@@ -61,7 +61,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }))
         new Setting(containerEl)
-        .setName('Post-Process with GPT')
+        .setName('Post-process with GPT')
         .setDesc('Run the transcibed text through GPT-4o to clean it up.')
         .addToggle(toggle => toggle
             .setValue(this.plugin.settings.postProcess) // Added this line
@@ -70,7 +70,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             }));
         new Setting(containerEl)
-        .setName('Post-Process Model')
+        .setName('Post-process model')
         .setDesc('Send your transcribed audio through GPT to add paragraphs and other cleanup.')
         .addDropdown(dropdown => {
             dropdown.addOption('gpt-3.5-turbo',"GPT 3.5 Turbo (Cheap)");
@@ -82,7 +82,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
               });
             });
         new Setting(containerEl)
-        .setName('Custom Post-Processing Instructions')
+        .setName('Custom post-processing instructions')
         .setDesc('Add additional instructions like custom spellings for post-processing.')
         .addText(text => text
             .setPlaceholder('Please make sure my name is spelled correctly, it starts with M as in Mancy.')
