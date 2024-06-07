@@ -1,7 +1,7 @@
 {
     "id": "audio-to-text",
     "name": "Audio to Text",
-    "version": "1.3.4",
+    "version": "1.3.5",
     "minAppVersion": "1.5.12",
     "description": "Convert recorded audio to text using OpenAI Whisper API.",
     "author": "Andrew Aldrich",

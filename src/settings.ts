@@ -45,7 +45,7 @@ export class AudioToTextSettingTab extends PluginSettingTab {
             .setName('Embed audio link')
             .setDesc('Embed a link to the audio file at the top of the transcription note.')
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.embedAudioLink) // Added this line
+                .setValue(this.plugin.settings.embedAudioLink)
                 .onChange(async (value) => {
                     this.plugin.settings.embedAudioLink = value;
                     await this.plugin.saveSettings();
@@ -62,19 +62,29 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 }))
         new Setting(containerEl)
         .setName('Post-process with GPT')
-        .setDesc('Run the transcibed text through GPT-4o to clean it up.')
+        .setDesc('Run the transcibed text through GPT to clean it up. If using on a 20+ minute audio file, please also enable the summary below or it may cut off part of the transcription.')
         .addToggle(toggle => toggle
-            .setValue(this.plugin.settings.postProcess) // Added this line
+            .setValue(this.plugin.settings.postProcess)
             .onChange(async (value) => {
                 this.plugin.settings.postProcess = value;
                 await this.plugin.saveSettings();
             }));
         new Setting(containerEl)
+        .setName('Post-process summary')
+        .setDesc('Bullet point the conversation instead of transcribing. This is a must for 20+ minute conversations.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.postProcessSummary)
+            .onChange(async (value) => {
+                this.plugin.settings.postProcessSummary = value;
+                await this.plugin.saveSettings();
+            }));      
+        new Setting(containerEl)
         .setName('Post-process model')
-        .setDesc('Send your transcribed audio through GPT to add paragraphs and other cleanup.')
+        .setDesc('Choose GPT 4 Turbo if conversations are greater than 20 minutes.')
         .addDropdown(dropdown => {
             dropdown.addOption('gpt-3.5-turbo',"GPT 3.5 Turbo (Cheap)");
-            dropdown.addOption('gpt-4o',"GPT 4o (Best)");
+            dropdown.addOption('gpt-4o',"GPT 4o (Fast)");
+            dropdown.addOption('gpt-4-turbo',"GPT 4 Turbo (Best)");
             dropdown.setValue(this.plugin.settings.postProcessModel);
             dropdown.onChange(async (value) => {
                 this.plugin.settings.postProcessModel = value;
@@ -91,6 +101,6 @@ export class AudioToTextSettingTab extends PluginSettingTab {
                 this.plugin.settings.postProcessInstructions = value;
                 await this.plugin.saveSettings();
             }));
-                
+                          
     }
 }
