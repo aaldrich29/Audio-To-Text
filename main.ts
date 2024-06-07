@@ -178,8 +178,8 @@ export default class AudioToTextPlugin extends Plugin {
     async postProcessText(text: string): Promise<string> {
         const notice = new Notice("Post-Processing...",0)
         const apiKey = this.settings.apiKey;
-        const instructions = "You assist in cleaning up transcribed audio files. Please make this readable, adding paragraphs and editing punctuation as needed. " + this.settings.postProcessInstructions;
-
+        const instructions = "You assist in making transcribed audio files more readable. Add paragraph breaks, fix punctuation. Do not summarize unless instructed in this system prompt. Make sure what you provide is an accurate representation of the entire transcribed audio. " + this.settings.postProcessInstructions;
+        //if settings says bullet point transcription, then instructions is "The following us an audio transcription. Please bullet point the transcription."
     
         const payload = {
             model: this.settings.postProcessModel,
@@ -201,10 +201,19 @@ export default class AudioToTextPlugin extends Plugin {
         if (!response.ok) {
             throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
-    
+        
+        
         const data = await response.json();
         notice.hide()
-        return data.choices[0].message.content;
+
+        if (data.choices[0].finish_reason === "length"){
+            //Text was cut off by GPT so return full text instead.
+            new Notice('Transcribed text too long for post-processing. Returning full transcription.',5)
+            return text;
+        } else{
+            return data.choices[0].message.content;
+        }
+
     }
     
     extractAudioFileLinks(content: string): string[] {
