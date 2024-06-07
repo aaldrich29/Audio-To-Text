@@ -160,9 +160,16 @@ export default class AudioToTextPlugin extends Plugin {
             
             const audioBuffer = await this.app.vault.readBinary(audioFile);
             const text = await this.transcribeAudio(audioBuffer, audioFile.name);
+            
 
             if(this.settings.postProcess){
-                return await this.postProcessText(text);
+                try{
+                    return await this.postProcessText(text);
+                } catch {
+                    new Notice('Error in post-processing.');
+                    return text;
+                }
+
             } else {
                 return text;
             }
