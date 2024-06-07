@@ -191,7 +191,7 @@ export default class AudioToTextPlugin extends Plugin {
         if (this.settings.postProcessSummary){
             instructions = "Please summarize the following conversation into detailed bullet points. Each bullet point should capture not only the subjects discussed but also the key details of what was actually said about those subjects. Make sure to provide a thorough breakdown, including specific points and examples mentioned in the conversation." + this.settings.postProcessInstructions;
         } else{
-            instructions = "Please format the following transcription to improve readability. Add paragraph breaks where appropriate and fix any punctuation errors. Do not summarize or change any wording. " + this.settings.postProcessInstructions;
+            instructions = "Only return edited text that the user provides. Please format the following transcription to improve readability. Add paragraph breaks where appropriate and fix any punctuation errors. Do not summarize or change any wording. " + this.settings.postProcessInstructions;
         }
 
     
