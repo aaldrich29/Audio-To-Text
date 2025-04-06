@@ -1,3 +1,7 @@
+**Note: Archived Repository**
+
+I didn't quite get this published in the obsidian repository, and I didn't end up using it as much as I thought I would. This is a working plugin, if someone wants to take it over, tweak it, and publish it, please do!
+
 # Audio to Text
 
 Audio to Text is a plugin for Obsidian that transcribes audio files into text using the OpenAI Whisper API. This plugin supports various audio file formats and provides flexible options for transcribing audio to new notes or appending to existing notes. Works extremely well with Obsidian's built in audio recorder.
